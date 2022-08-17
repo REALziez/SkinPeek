@@ -1097,17 +1097,16 @@ client.on("interactionCreate", async (interaction) => {
 
                 await interaction.update(await allStatsEmbed(interaction, await getOverallStats(), parseInt(pageIndex)));
             } else if(interaction.customId.startsWith("changecollectionpage")) {
-                const [, id, pageIndex] = interaction.customId.split('/');
+                const [, id, pageIndex, totalPrice] = interaction.customId.split('/');
 
                 if(id !== interaction.user.id) return await interaction.reply({
                     embeds: [basicEmbed(s(interaction).error.NOT_UR_MESSAGE_STATS)],
                     ephemeral: true
                 });
-
                 const valorantUser = getUser(interaction.user.id);
                 const collection = await getCollection(valorantUser.id);
                 const emoji = await VPEmoji(interaction.channel, externalEmojisAllowed(interaction.channel));
-                await interaction.update(await renderCollection(collection, interaction, valorantUser, emoji, null, parseInt(pageIndex)));
+                await interaction.update(await renderCollection(collection, interaction, valorantUser, emoji, null, totalPrice, parseInt(pageIndex)));
             }else if(interaction.customId.startsWith("viewbundle")) {
                 const [, id, uuid] = interaction.customId.split('/');
 

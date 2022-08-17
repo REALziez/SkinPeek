@@ -127,30 +127,9 @@ export const renderOffers = async (shop, interaction, valorantUser, VPemoji, oth
     };
 }
 
-export const renderCollection = async (collection, interaction, valorantUser, VPemoji, otherId=null, pageIndex=0) => {
+export const renderCollection = async (collection, interaction, valorantUser, VPemoji, otherId=null, totalPrice, pageIndex=0) => {
     const forOtherUser = otherId && otherId !== interaction.user.id;
     const otherUserMention = `<@${otherId}>`;
-    var totalPrice = 0;
-    for (const uuid of collection.offers) {
-        const req = await fetch(`https://valorant-api.com/v1/weapons/skins/${uuid}`, {
-        });
-        const json = JSON.parse(req.body);
-        const rarity = await getRarity(json.data.contentTierUuid, interaction.channel);
-        const skin = await getSkin(json.data.levels[0].uuid);
-        var price;
-        if (rarity.name == "Select"){
-            price = 875;
-        } else if (rarity.name == "Deluxe"){
-            price = 1275;
-        } else if (rarity.name == "Premium"){
-            price = 1775;
-        } else {
-            price = skin.price;
-        }
-      
-        totalPrice += Number(price);
-    }
-
     if(!collection.success) {
         let errorText;
 
@@ -158,6 +137,10 @@ export const renderCollection = async (collection, interaction, valorantUser, VP
         else errorText = s(interaction).error.AUTH_ERROR_SHOP;
 
         return authFailureMessage(interaction, collection, errorText);
+    }
+
+    if(totalPrice == null){
+    totalPrice = await getCollectionValue(collection.offers, interaction);
     }
 
     let headerText;
@@ -173,11 +156,11 @@ export const renderCollection = async (collection, interaction, valorantUser, VP
 
     const emojiString = emojiToString(VPemoji) || s(interaction).info.PRICE;
 
-    const maxPages = Math.ceil(collection.offers / config.statsPerPage);
+    const maxPages = Math.ceil(collection.offers.length / 9);
 
     if(pageIndex < 0) pageIndex = maxPages - 1;
     if(pageIndex >= maxPages) pageIndex = 0;
-    const skinsToDisplay = Object.keys(collection.offers).slice(pageIndex * config.statsPerPage, pageIndex * config.statsPerPage + config.statsPerPage);
+    const skinsToDisplay = Object.keys(collection.offers).slice(pageIndex * 9, pageIndex * 9 + 9);
     const embeds = [basicEmbed(headerText)];
 
     for (const poob of skinsToDisplay) {
@@ -199,23 +182,36 @@ export const renderCollection = async (collection, interaction, valorantUser, VP
         }
 
         embeds.push(await collectionEmbed(json.data, interaction, price, emojiString));
-                /*
-        const embed = await collectionEmbed(json.data, interaction, skin.price, emojiString);
-        embeds.push(embed);
-
-        
-
-        /*
-        const skin = await getSkin(uuid);
-        const embed = await collectionEmbed(skin.uuid, skin.price, interaction, emojiString);
-        embeds.push(embed);
-        */
     }
 
     return {
         embeds: embeds,
-        components: [pageButtons("changecollectionpage", interaction.user.id, pageIndex, maxPages)]
+        components: [pageButtons("changecollectionpage", interaction.user.id, pageIndex, maxPages, totalPrice)]
     }
+}
+
+const getCollectionValue = async (collectionOffers, interaction) => {
+    var totalPrice = 0;
+
+    for (const uuid of collectionOffers) {
+        const req = await fetch(`https://valorant-api.com/v1/weapons/skins/${uuid}`, {
+        });
+        const json = JSON.parse(req.body);
+        const rarity = await getRarity(json.data.contentTierUuid, interaction.channel);
+        const skin = await getSkin(json.data.levels[0].uuid);
+        var price;
+        if (rarity.name == "Select"){
+            price = 875;
+        } else if (rarity.name == "Deluxe"){
+            price = 1275;
+        } else if (rarity.name == "Premium"){
+            price = 1775;
+        } else {
+            price = skin.price;
+        }
+        totalPrice += Number(price);
+    }
+    return totalPrice;
 }
 
 
@@ -606,9 +602,9 @@ const priceDescription = (VPemojiString, price) => {
     if(price) return `${VPemojiString} ${price}`;
 }
 
-const pageButtons = (pageId, userId, current, max) => {
-    const leftButton = new MessageButton().setStyle("SECONDARY").setEmoji("◀").setCustomId(`${pageId}/${userId}/${current - 1}`);
-    const rightButton = new MessageButton().setStyle("SECONDARY").setEmoji("▶").setCustomId(`${pageId}/${userId}/${current + 1}`);
+const pageButtons = (pageId, userId, current, max, money) => {
+    const leftButton = new MessageButton().setStyle("SECONDARY").setEmoji("◀").setCustomId(`${pageId}/${userId}/${current - 1}/${money}`);
+    const rightButton = new MessageButton().setStyle("SECONDARY").setEmoji("▶").setCustomId(`${pageId}/${userId}/${current + 1}/${money}`);
 
     if(current === 0) leftButton.setEmoji("⏩");
     if(current === max - 1) rightButton.setEmoji("⏪");

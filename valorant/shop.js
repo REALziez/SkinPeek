@@ -195,7 +195,6 @@ export const getCollection = async (id, account=null) => {
     if(!authSuccess.success) return authSuccess;
 
     const user = getUser(id, account);
-    console.log(`Fetching collection for ${user.username}...`);
 
     // https://github.com/techchrism/valorant-api-docs/blob/trunk/docs/Store/GET%20Store_GetWallet.md
     const req = await fetch(`https://pd.${userRegion(user)}.a.pvp.net/personalization/v2/players/${user.puuid}/playerloadout`, {

@@ -4,6 +4,7 @@ import {getBundles, getNightMarket, getOffers, getShopCache, getCollection} from
 
 export const Operations = {
     SHOP: "sh",
+    COLLECTION: "cl",
     NIGHT_MARKET: "nm",
     BUNDLES: "bu",
     NULL: "00"
