@@ -1,12 +1,14 @@
-import {getBuddy, getBundle, getCard, getSkin, getSpray, getTitle} from "../valorant/cache.js";
+import {getBuddy, getBundle, getCard, getSkin, getSpray, getTitle, getRarity} from "../valorant/cache.js";
 import {
     emojiToString,
     skinNameAndEmoji,
+    collectionSkinNameAndEmoji,
     escapeMarkdown,
     itemTypes,
     removeAlertActionRow,
     removeAlertButton,
-    fetchChannel
+    fetchChannel,
+    fetch
 } from "../misc/util.js";
 import config from "../misc/config.js";
 import {l, s} from "../misc/languages.js";
@@ -15,6 +17,7 @@ import {getStatsFor} from "../misc/stats.js";
 import {getUser} from "../valorant/auth.js";
 import {readUserJson, saveUser} from "../valorant/accountSwitcher.js";
 import {getSetting, humanifyValue, settingName} from "../misc/settings.js";
+import { json } from "express";
 
 
 export const VAL_COLOR_1 = 0xFD4553;
@@ -123,6 +126,98 @@ export const renderOffers = async (shop, interaction, valorantUser, VPemoji, oth
         embeds, components
     };
 }
+
+export const renderCollection = async (collection, interaction, valorantUser, VPemoji, otherId=null, pageIndex=0) => {
+    const forOtherUser = otherId && otherId !== interaction.user.id;
+    const otherUserMention = `<@${otherId}>`;
+    var totalPrice = 0;
+    for (const uuid of collection.offers) {
+        const req = await fetch(`https://valorant-api.com/v1/weapons/skins/${uuid}`, {
+        });
+        const json = JSON.parse(req.body);
+        const rarity = await getRarity(json.data.contentTierUuid, interaction.channel);
+        const skin = await getSkin(json.data.levels[0].uuid);
+        var price;
+        if (rarity.name == "Select"){
+            price = 875;
+        } else if (rarity.name == "Deluxe"){
+            price = 1275;
+        } else if (rarity.name == "Premium"){
+            price = 1775;
+        } else {
+            price = skin.price;
+        }
+      
+        totalPrice += Number(price);
+    }
+
+    if(!collection.success) {
+        let errorText;
+
+        if(forOtherUser) errorText = s(interaction).error.AUTH_ERROR_SHOP_OTHER.f({u: otherUserMention});
+        else errorText = s(interaction).error.AUTH_ERROR_SHOP;
+
+        return authFailureMessage(interaction, collection, errorText);
+    }
+
+    let headerText;
+    if(forOtherUser) {
+        const json = readUserJson(otherId);
+
+        let usernameText = otherUserMention;
+        if(json.accounts.length > 1) usernameText += ' ' + s(interaction).info.SWITCH_ACCOUNT_BUTTON.f({n: json.currentAccount});
+
+        headerText = s(interaction).info.COLLECTION_HEADER.f({u: usernameText, t: totalPrice, p: totalPrice/100});
+    }
+    else headerText = s(interaction).info.COLLECTION_HEADER.f({u: valorantUser.username, t: totalPrice, p: totalPrice/100}, interaction);
+
+    const emojiString = emojiToString(VPemoji) || s(interaction).info.PRICE;
+
+    const maxPages = Math.ceil(collection.offers / config.statsPerPage);
+
+    if(pageIndex < 0) pageIndex = maxPages - 1;
+    if(pageIndex >= maxPages) pageIndex = 0;
+    const skinsToDisplay = Object.keys(collection.offers).slice(pageIndex * config.statsPerPage, pageIndex * config.statsPerPage + config.statsPerPage);
+    const embeds = [basicEmbed(headerText)];
+
+    for (const poob of skinsToDisplay) {
+        const uuid = collection.offers[poob];
+        const req = await fetch(`https://valorant-api.com/v1/weapons/skins/${uuid}`, {
+        });
+        const json = JSON.parse(req.body);
+        const rarity = await getRarity(json.data.contentTierUuid, interaction.channel);
+        const skin = await getSkin(json.data.levels[0].uuid);
+        var price;
+        if (rarity.name == "Select"){
+            price = 875;
+        } else if (rarity.name == "Deluxe"){
+            price = 1275;
+        } else if (rarity.name == "Premium"){
+            price = 1775;
+        } else {
+            price = skin.price;
+        }
+
+        embeds.push(await collectionEmbed(json.data, interaction, price, emojiString));
+                /*
+        const embed = await collectionEmbed(json.data, interaction, skin.price, emojiString);
+        embeds.push(embed);
+
+        
+
+        /*
+        const skin = await getSkin(uuid);
+        const embed = await collectionEmbed(skin.uuid, skin.price, interaction, emojiString);
+        embeds.push(embed);
+        */
+    }
+
+    return {
+        embeds: embeds,
+        components: [pageButtons("changecollectionpage", interaction.user.id, pageIndex, maxPages)]
+    }
+}
+
 
 export const renderBundles = async (bundles, interaction, VPemoji) => {
     if(!bundles.success) return authFailureMessage(interaction, bundles, s(interaction).error.AUTH_ERROR_BUNDLES);
@@ -381,6 +476,19 @@ const skinEmbed = async (uuid, price, interaction, VPemojiString) => {
             url: skin.icon
         }
     };
+}
+
+const collectionEmbed = async (uuid, interaction, price, VPemojiString) => {
+    return {
+        title: await collectionSkinNameAndEmoji(uuid.displayName, uuid.contentTierUuid, interaction.channel, interaction.locale),
+        url: uuid.displayIcon,
+        description: priceDescription(VPemojiString, price),
+        color: VAL_COLOR_2,
+        thumbnail: {
+            url: uuid.displayIcon
+        }
+    }
+
 }
 
 const buddyEmbed = async (uuid, price, locale, VPemojiString) => {

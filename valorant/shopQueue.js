@@ -1,6 +1,6 @@
 import config from "../misc/config.js";
 import {getPuuid, wait} from "../misc/util.js";
-import {getBundles, getNightMarket, getOffers, getShopCache} from "./shop.js";
+import {getBundles, getNightMarket, getOffers, getShopCache, getCollection} from "./shop.js";
 
 export const Operations = {
     SHOP: "sh",
@@ -22,6 +22,19 @@ export const queueItemShop = async (id) => {
         c, id
     });
     console.log(`Added item shop fetch to shop queue for user ${id} (c=${c})`);
+
+    if(processingCount === 0) await processShopQueue();
+    return {inQueue: true, c};
+}
+
+export const queueCollection = async (id) => {
+    if(!config.useShopQueue || shopCached(id)) return {inQueue: false, ...await getCollection(id)};
+    const c = queueCounter++;
+    queue.push({
+        operation: Operations.COLLECTION,
+        c, id
+    });
+    console.log(`Added collection fetch to queue for user ${id} (c=${c})`);
 
     if(processingCount === 0) await processShopQueue();
     return {inQueue: true, c};
@@ -81,6 +94,9 @@ export const processShopQueue = async () => {
                 break;
             case Operations.NIGHT_MARKET:
                 result = await getNightMarket(item.id);
+                break;
+            case Operations.COLLECTION:
+                result = await getCollection(item.id);
                 break;
             case Operations.BUNDLES:
                 result = await getBundles(item.id);

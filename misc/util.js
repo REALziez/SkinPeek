@@ -227,6 +227,15 @@ export const skinNameAndEmoji = async (skin, channel, locale=DEFAULT_LANG) => {
     return rarityIcon ? `${rarityIcon} ${name}` : name;
 }
 
+export const collectionSkinNameAndEmoji = async (names, rarities, channel, locale=DEFAULT_LANG) => {
+    const name = names;
+
+    const rarity = await getRarity(rarities, channel);
+
+    const rarityIcon = await rarityEmoji(channel, rarity.name, rarity.icon, externalEmojisAllowed(channel));
+    return rarityIcon ? `${rarityIcon} ${name}` : name;
+}
+
 export const actionRow = (button) => new MessageActionRow().addComponents(button);
 
 export const removeAlertButton = (id, uuid, buttonText) => new MessageButton().setCustomId(`removealert/${uuid}/${id}/${Math.round(Math.random() * 100000)}`).setStyle("DANGER").setLabel(buttonText).setEmoji("✖");

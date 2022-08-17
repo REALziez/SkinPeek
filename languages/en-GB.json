@@ -45,6 +45,7 @@
   },
   "info":{
     "SHOP_HEADER": "Daily shop for **{u}** (new shop <t:{t}:R>)",
+    "COLLECTION_HEADER": "**{u}**'s collection (Val Point Value: **{t}** | USD Value: **{p}**)",
     "BUNDLE_HEADER": "Featured bundle: **{b}**",
     "BUNDLES_HEADER": "Currently featured bundles:",
     "BUNDLES_HEADER_DESC": "Use `/bundle` to inspect a specific bundle",

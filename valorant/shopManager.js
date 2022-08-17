@@ -1,7 +1,7 @@
 import {externalEmojisAllowed, fetchChannel, wait} from "../misc/util.js";
 import {VPEmoji} from "../discord/emoji.js";
-import {getShopQueueItemStatus, queueBundles, queueItemShop, queueNightMarket} from "./shopQueue.js";
-import {renderBundles, renderNightMarket, renderOffers} from "../discord/embed.js";
+import {getShopQueueItemStatus, queueBundles, queueItemShop, queueNightMarket, queueCollection} from "./shopQueue.js";
+import {renderBundles, renderNightMarket, renderOffers, renderCollection} from "../discord/embed.js";
 
 export const fetchShop = async (interaction, user, targetId=interaction.user.id) => {
     // fetch the channel if not in cache
@@ -18,6 +18,23 @@ export const fetchShop = async (interaction, user, targetId=interaction.user.id)
     }
 
     return await renderOffers(shop, interaction, user, await emojiPromise, targetId);
+}
+
+export const fetchCollection = async (interaction, user, targetId=interaction.user.id) => {
+    // fetch the channel if not in cache
+    const channel = interaction.channel || await fetchChannel(interaction.channelId);
+
+    // start uploading emoji now
+    const emojiPromise = VPEmoji(channel, externalEmojisAllowed(channel));
+
+    let collection = await queueCollection(targetId);
+    while(collection.inQueue) {
+        const queueStatus = getShopQueueItemStatus(collection.c);
+        if(queueStatus.processed) collection = queueStatus.result;
+        else await wait(150);
+    }
+
+    return await renderCollection(collection, interaction, user, await emojiPromise, targetId);
 }
 
 export const fetchBundles = async (interaction) => {

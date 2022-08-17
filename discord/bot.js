@@ -14,6 +14,7 @@ import {
     alertsPageEmbed,
     statsForSkinEmbed,
     allStatsEmbed,
+    renderCollection,
     accountsListEmbed, switchAccountButtons
 } from "./embed.js";
 import {authUser, getUser, getUserList, setUserLocale,} from "../valorant/auth.js";
@@ -57,7 +58,8 @@ import {
     switchAccount
 } from "../valorant/accountSwitcher.js";
 import {sendShardMessage} from "../misc/shardMessage.js";
-import {fetchBundles, fetchNightMarket, fetchShop} from "../valorant/shopManager.js";
+import {fetchBundles, fetchNightMarket, fetchShop, fetchCollection} from "../valorant/shopManager.js";
+import {getCollection} from "../valorant/shop.js";
 import {
     getSetting,
     handleSettingDropdown,
@@ -119,6 +121,10 @@ const commands = [
             description: "Optional: see the daily shop of someone else!",
             required: false
         }]
+    },
+    {
+        name: "collection",
+        description: "Show your collection!"
     },
     {
         name: "bundles",
@@ -465,6 +471,36 @@ client.on("interactionCreate", async (interaction) => {
                     await interaction.followUp(message);
 
                     console.log(`Sent ${interaction.user.tag}'s shop!`); // also logged if maintenance/login failed
+
+                    break;
+                }
+                case "collection": {
+                    let targetId = interaction.user.id;
+
+                    const otherUser = interaction.options.getUser("user");
+                    if(otherUser && otherUser.id !== interaction.user.id) {
+                        const otherValorantUser = getUser(otherUser.id);
+                        if(!otherValorantUser) return await interaction.reply({
+                            embeds: [basicEmbed(s(interaction).error.NOT_REGISTERED_OTHER)]
+                        });
+
+                        if(!getSetting(otherUser.id, "othersCanViewShop")) return await interaction.reply({
+                            embeds: [basicEmbed(s(interaction).error.OTHER_SHOP_DISABLED.f({u: `<@${otherUser.id}>`}))]
+                        });
+
+                        targetId = otherUser.id;
+                    }
+                    else if(!valorantUser) return await interaction.reply({
+                        embeds: [basicEmbed(s(interaction).error.NOT_REGISTERED)],
+                        ephemeral: true
+                    });
+
+                    await defer(interaction);
+
+                    const message = await fetchCollection(interaction, valorantUser, targetId);
+                    await interaction.followUp(message);
+
+                    console.log(`Sent ${interaction.user.tag}'s collection!`); // also logged if maintenance/login failed
 
                     break;
                 }
@@ -1060,7 +1096,19 @@ client.on("interactionCreate", async (interaction) => {
                 });
 
                 await interaction.update(await allStatsEmbed(interaction, await getOverallStats(), parseInt(pageIndex)));
-            } else if(interaction.customId.startsWith("viewbundle")) {
+            } else if(interaction.customId.startsWith("changecollectionpage")) {
+                const [, id, pageIndex] = interaction.customId.split('/');
+
+                if(id !== interaction.user.id) return await interaction.reply({
+                    embeds: [basicEmbed(s(interaction).error.NOT_UR_MESSAGE_STATS)],
+                    ephemeral: true
+                });
+
+                const valorantUser = getUser(interaction.user.id);
+                const collection = await getCollection(valorantUser.id);
+                const emoji = await VPEmoji(interaction.channel, externalEmojisAllowed(interaction.channel));
+                await interaction.update(await renderCollection(collection, interaction, valorantUser, emoji, null, parseInt(pageIndex)));
+            }else if(interaction.customId.startsWith("viewbundle")) {
                 const [, id, uuid] = interaction.customId.split('/');
 
                 if(id !== interaction.user.id) return await interaction.reply({

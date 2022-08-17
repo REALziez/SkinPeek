@@ -10,7 +10,7 @@ import {
     isToday,
     userRegion
 } from "../misc/util.js";
-import {addBundleData} from "./cache.js";
+import {addBundleData, getSkin} from "./cache.js";
 import {addStore} from "../misc/stats.js";
 import config from "../misc/config.js";
 import {deleteUser} from "./accountSwitcher.js";
@@ -45,6 +45,7 @@ const getShop = async (id, account=null) => {
         console.error(e);
         console.error(json);
     }
+
 
     // add to shop cache
     addShopCache(user.puuid, json);
@@ -187,4 +188,35 @@ const addShopCache = (puuid, shopJson) => {
     fs.writeFileSync("data/shopCache/" + puuid + ".json", JSON.stringify(shopCache, null, 2));
 
     console.log(`Added shop cache for user ${discordTag(puuid)}`);
+}
+
+export const getCollection = async (id, account=null) => {
+    const authSuccess = await authUser(id, account);
+    if(!authSuccess.success) return authSuccess;
+
+    const user = getUser(id, account);
+    console.log(`Fetching collection for ${user.username}...`);
+
+    // https://github.com/techchrism/valorant-api-docs/blob/trunk/docs/Store/GET%20Store_GetWallet.md
+    const req = await fetch(`https://pd.${userRegion(user)}.a.pvp.net/personalization/v2/players/${user.puuid}/playerloadout`, {
+        headers: {
+            "Authorization": "Bearer " + user.auth.rso,
+            "X-Riot-Entitlements-JWT": user.auth.ent
+        }
+    });
+    console.assert(req.statusCode === 200, `Valorant collection code is ${req.statusCode}!`, req);
+
+    const json = JSON.parse(req.body);
+    if(json.httpStatus === 400 && json.errorCode === "BAD_CLAIMS") {
+        deleteUserAuth(user);
+        return {success: false}
+    } else if(isMaintenance(json)) return {success: false, maintenance: true};
+
+    var collection = [];
+    for (var i = 0; i < json.Guns.length; i++) {
+        collection.push(json.Guns[i].SkinID);
+    }
+
+    return {success: true, offers: collection};
+
 }
