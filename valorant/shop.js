@@ -10,10 +10,12 @@ import {
     isToday,
     userRegion
 } from "../misc/util.js";
+import { getCollectionValue } from "../discord/embed.js";
 import {addBundleData, getSkin} from "./cache.js";
 import {addStore} from "../misc/stats.js";
 import config from "../misc/config.js";
 import {deleteUser} from "./accountSwitcher.js";
+
 
 const getShop = async (id, account=null) => {
     const authSuccess = await authUser(id, account);
@@ -190,10 +192,45 @@ const addShopCache = (puuid, shopJson) => {
     console.log(`Added shop cache for user ${discordTag(puuid)}`);
 }
 
-export const getCollection = async (id, account=null) => {
+export const getCollectionCache = (puuid, newCollection) => {
+    if(!config.useShopCache) return null;
+    try {
+        const collectionCache = JSON.parse(fs.readFileSync("data/collectionCache/" + puuid + ".json", "utf8"));
+        
+        const newCol = JSON.stringify(newCollection.offers);
+        const oldCol = JSON.stringify(collectionCache.offers.offers);
+        if (newCol == oldCol) {
+        console.log(`Fetched collection cache for user ${discordTag(puuid)}`);
+        return {collectionCache};
+        }
+    } catch(e) {}
+    return null;
+}
+
+const addCollectionCache = async (puuid, collectionJson) => {
+    if(!config.useShopCache) return;
+    const totalPrice = await getCollectionValue(collectionJson);
+    const collectionCache = {
+        offers: {
+            offers: collectionJson,
+            rarity: totalPrice.collection,
+            price: totalPrice.priceList,
+            jsonData: totalPrice.jsonList
+        },
+        totalPrice: totalPrice.totalPrice
+    }
+    console.log("cached")
+
+    if(!fs.existsSync("data/collectionCache")) fs.mkdirSync("data/collectionCache");
+    fs.writeFileSync("data/collectionCache/" + puuid + ".json", JSON.stringify(collectionCache, null, 2));
+
+    console.log(`Added collection cache for user ${discordTag(puuid)}`);
+}
+
+
+export const getCollection = async (id, store=false, account=null) => {
     const authSuccess = await authUser(id, account);
     if(!authSuccess.success) return authSuccess;
-
     const user = getUser(id, account);
 
     // https://github.com/techchrism/valorant-api-docs/blob/trunk/docs/Store/GET%20Store_GetWallet.md
@@ -214,6 +251,10 @@ export const getCollection = async (id, account=null) => {
     var collection = [];
     for (var i = 0; i < json.Guns.length; i++) {
         collection.push(json.Guns[i].SkinID);
+    }
+    console.log(store);
+    if(store == true){
+    await addCollectionCache(user.puuid, collection);
     }
 
     return {success: true, offers: collection};

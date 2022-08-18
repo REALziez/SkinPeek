@@ -1104,7 +1104,7 @@ client.on("interactionCreate", async (interaction) => {
                     ephemeral: true
                 });
                 const valorantUser = getUser(interaction.user.id);
-                const collection = await getCollection(valorantUser.id);
+                const collection = await getCollection(valorantUser.id, null, false);
                 const emoji = await VPEmoji(interaction.channel, externalEmojisAllowed(interaction.channel));
                 await interaction.update(await renderCollection(collection, interaction, valorantUser, emoji, null, totalPrice, parseInt(pageIndex)));
             }else if(interaction.customId.startsWith("viewbundle")) {

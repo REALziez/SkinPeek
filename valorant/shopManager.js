@@ -1,4 +1,5 @@
-import {externalEmojisAllowed, fetchChannel, wait} from "../misc/util.js";
+import fs from "fs";
+import {externalEmojisAllowed, fetchChannel, wait, getPuuid} from "../misc/util.js";
 import {VPEmoji} from "../discord/emoji.js";
 import {getShopQueueItemStatus, queueBundles, queueItemShop, queueNightMarket, queueCollection} from "./shopQueue.js";
 import {renderBundles, renderNightMarket, renderOffers, renderCollection} from "../discord/embed.js";
@@ -33,8 +34,8 @@ export const fetchCollection = async (interaction, user, targetId=interaction.us
         if(queueStatus.processed) collection = queueStatus.result;
         else await wait(150);
     }
-
-    return await renderCollection(collection, interaction, user, await emojiPromise, targetId);
+    const collectionCache = JSON.parse(fs.readFileSync("data/collectionCache/" + getPuuid(targetId) + ".json", "utf8"));
+    return await renderCollection(collection, interaction, user, await emojiPromise, targetId, collectionCache.totalPrice, collectionCache.offers.price, collectionCache.offers.jsonData);
 }
 
 export const fetchBundles = async (interaction) => {

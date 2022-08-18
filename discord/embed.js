@@ -127,7 +127,7 @@ export const renderOffers = async (shop, interaction, valorantUser, VPemoji, oth
     };
 }
 
-export const renderCollection = async (collection, interaction, valorantUser, VPemoji, otherId=null, totalPrice, pageIndex=0) => {
+export const renderCollection = async (collection, interaction, valorantUser, VPemoji, otherId=null, totalPrice, skinPrice, jsonList, pageIndex=0) => {
     const forOtherUser = otherId && otherId !== interaction.user.id;
     const otherUserMention = `<@${otherId}>`;
     if(!collection.success) {
@@ -139,9 +139,6 @@ export const renderCollection = async (collection, interaction, valorantUser, VP
         return authFailureMessage(interaction, collection, errorText);
     }
 
-    if(totalPrice == null){
-    totalPrice = await getCollectionValue(collection.offers, interaction);
-    }
 
     let headerText;
     if(forOtherUser) {
@@ -164,24 +161,7 @@ export const renderCollection = async (collection, interaction, valorantUser, VP
     const embeds = [basicEmbed(headerText)];
 
     for (const poob of skinsToDisplay) {
-        const uuid = collection.offers[poob];
-        const req = await fetch(`https://valorant-api.com/v1/weapons/skins/${uuid}`, {
-        });
-        const json = JSON.parse(req.body);
-        const rarity = await getRarity(json.data.contentTierUuid, interaction.channel);
-        const skin = await getSkin(json.data.levels[0].uuid);
-        var price;
-        if (rarity.name == "Select"){
-            price = 875;
-        } else if (rarity.name == "Deluxe"){
-            price = 1275;
-        } else if (rarity.name == "Premium"){
-            price = 1775;
-        } else {
-            price = skin.price;
-        }
-
-        embeds.push(await collectionEmbed(json.data, interaction, price, emojiString));
+        embeds.push(await collectionEmbed(jsonList[poob], interaction, skinPrice[poob], emojiString));
     }
 
     return {
@@ -190,14 +170,16 @@ export const renderCollection = async (collection, interaction, valorantUser, VP
     }
 }
 
-const getCollectionValue = async (collectionOffers, interaction) => {
+export const getCollectionValue = async (collectionOffers) => {
     var totalPrice = 0;
-
+    var collection = [];
+    var priceList = [];
+    var jsonList = [];
     for (const uuid of collectionOffers) {
         const req = await fetch(`https://valorant-api.com/v1/weapons/skins/${uuid}`, {
         });
         const json = JSON.parse(req.body);
-        const rarity = await getRarity(json.data.contentTierUuid, interaction.channel);
+        const rarity = await getRarity(json.data.contentTierUuid);
         const skin = await getSkin(json.data.levels[0].uuid);
         var price;
         if (rarity.name == "Select"){
@@ -209,9 +191,14 @@ const getCollectionValue = async (collectionOffers, interaction) => {
         } else {
             price = skin.price;
         }
+
+        collection.push(rarity.name);
+        priceList.push(price);
+        jsonList.push(json.data);
+
         totalPrice += Number(price);
     }
-    return totalPrice;
+    return {totalPrice, collection, priceList, jsonList};
 }
 
 

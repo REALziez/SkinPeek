@@ -1,6 +1,6 @@
 import config from "../misc/config.js";
 import {getPuuid, wait} from "../misc/util.js";
-import {getBundles, getNightMarket, getOffers, getShopCache, getCollection} from "./shop.js";
+import {getBundles, getNightMarket, getOffers, getShopCache, getCollection, getCollectionCache} from "./shop.js";
 
 export const Operations = {
     SHOP: "sh",
@@ -29,13 +29,12 @@ export const queueItemShop = async (id) => {
 }
 
 export const queueCollection = async (id) => {
-    if(!config.useShopQueue || shopCached(id)) return {inQueue: false, ...await getCollection(id)};
+    if(!config.useShopQueue || collectionCached(id)) return {inQueue: false, ...await getCollection(id, true)};
     const c = queueCounter++;
     queue.push({
         operation: Operations.COLLECTION,
         c, id
     });
-    console.log(`Added collection fetch to queue for user ${id} (c=${c})`);
 
     if(processingCount === 0) await processShopQueue();
     return {inQueue: true, c};
@@ -97,7 +96,7 @@ export const processShopQueue = async () => {
                 result = await getNightMarket(item.id);
                 break;
             case Operations.COLLECTION:
-                result = await getCollection(item.id);
+                result = await getCollection(item.id, false);
                 break;
             case Operations.BUNDLES:
                 result = await getBundles(item.id);
@@ -138,4 +137,8 @@ export const getShopQueueItemStatus = (c) => {
 
 const shopCached = (id, bundles=false) => {
     return getShopCache(getPuuid(id), bundles, false) !== null;
+}
+
+const collectionCached = async (id, bundles=false) => {
+    return getCollectionCache(getCollectionCache(getPuuid(id), await getCollection(id, false))) !== null;
 }
