@@ -192,7 +192,7 @@ const addShopCache = (puuid, shopJson) => {
     console.log(`Added shop cache for user ${discordTag(puuid)}`);
 }
 
-export const getCollectionCache = (puuid, newCollection) => {
+export const getCollectionCache = async (puuid, newCollection) => {
     if(!config.useShopCache) return null;
     try {
         const collectionCache = JSON.parse(fs.readFileSync("data/collectionCache/" + puuid + ".json", "utf8"));
@@ -207,9 +207,9 @@ export const getCollectionCache = (puuid, newCollection) => {
     return null;
 }
 
-const addCollectionCache = async (puuid, collectionJson) => {
+export const addCollectionCache = async (puuid, collectionJson) => {
     if(!config.useShopCache) return;
-    const totalPrice = await getCollectionValue(collectionJson);
+    const totalPrice = await getCollectionValue(collectionJson.offers);
     const collectionCache = {
         offers: {
             offers: collectionJson,
@@ -219,7 +219,6 @@ const addCollectionCache = async (puuid, collectionJson) => {
         },
         totalPrice: totalPrice.totalPrice
     }
-    console.log("cached")
 
     if(!fs.existsSync("data/collectionCache")) fs.mkdirSync("data/collectionCache");
     fs.writeFileSync("data/collectionCache/" + puuid + ".json", JSON.stringify(collectionCache, null, 2));
@@ -228,7 +227,7 @@ const addCollectionCache = async (puuid, collectionJson) => {
 }
 
 
-export const getCollection = async (id, store=false, account=null) => {
+export const getCollection = async (id, account=null) => {
     const authSuccess = await authUser(id, account);
     if(!authSuccess.success) return authSuccess;
     const user = getUser(id, account);
@@ -251,10 +250,6 @@ export const getCollection = async (id, store=false, account=null) => {
     var collection = [];
     for (var i = 0; i < json.Guns.length; i++) {
         collection.push(json.Guns[i].SkinID);
-    }
-    console.log(store);
-    if(store == true){
-    await addCollectionCache(user.puuid, collection);
     }
 
     return {success: true, offers: collection};

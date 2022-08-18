@@ -1,6 +1,7 @@
+import fs from 'fs';
 import config from "../misc/config.js";
 import {getPuuid, wait} from "../misc/util.js";
-import {getBundles, getNightMarket, getOffers, getShopCache, getCollection, getCollectionCache} from "./shop.js";
+import {getBundles, getNightMarket, getOffers, getShopCache, getCollection, getCollectionCache, addCollectionCache} from "./shop.js";
 
 export const Operations = {
     SHOP: "sh",
@@ -29,7 +30,7 @@ export const queueItemShop = async (id) => {
 }
 
 export const queueCollection = async (id) => {
-    if(!config.useShopQueue || collectionCached(id)) return {inQueue: false, ...await getCollection(id, true)};
+    if(!config.useShopQueue || collectionCached(id)) return {inQueue: false, ...await getCollection(id)};
     const c = queueCounter++;
     queue.push({
         operation: Operations.COLLECTION,
@@ -96,7 +97,7 @@ export const processShopQueue = async () => {
                 result = await getNightMarket(item.id);
                 break;
             case Operations.COLLECTION:
-                result = await getCollection(item.id, false);
+                result = await getCollection(item.id);
                 break;
             case Operations.BUNDLES:
                 result = await getBundles(item.id);
@@ -140,5 +141,5 @@ const shopCached = (id, bundles=false) => {
 }
 
 const collectionCached = async (id, bundles=false) => {
-    return getCollectionCache(getCollectionCache(getPuuid(id), await getCollection(id, false))) !== null;
+    return getCollectionCache(getCollectionCache(getPuuid(id), await getCollection(id))) !== null;
 }

@@ -2,6 +2,7 @@ import fs from "fs";
 import {externalEmojisAllowed, fetchChannel, wait, getPuuid} from "../misc/util.js";
 import {VPEmoji} from "../discord/emoji.js";
 import {getShopQueueItemStatus, queueBundles, queueItemShop, queueNightMarket, queueCollection} from "./shopQueue.js";
+import { addCollectionCache, getCollection } from "./shop.js";
 import {renderBundles, renderNightMarket, renderOffers, renderCollection} from "../discord/embed.js";
 
 export const fetchShop = async (interaction, user, targetId=interaction.user.id) => {
@@ -34,6 +35,7 @@ export const fetchCollection = async (interaction, user, targetId=interaction.us
         if(queueStatus.processed) collection = queueStatus.result;
         else await wait(150);
     }
+    if(!fs.existsSync("data/collectionCache/" + getPuuid(targetId) + ".json")) await addCollectionCache(getPuuid(targetId), await getCollection(targetId));
     const collectionCache = JSON.parse(fs.readFileSync("data/collectionCache/" + getPuuid(targetId) + ".json", "utf8"));
     return await renderCollection(collection, interaction, user, await emojiPromise, targetId, collectionCache.totalPrice, collectionCache.offers.price, collectionCache.offers.jsonData);
 }

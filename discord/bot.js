@@ -1,5 +1,6 @@
 import {Client, Intents, MessageActionRow, MessageFlags, MessageSelectMenu} from "discord.js";
 import cron from "node-cron";
+import fs from "fs";
 
 import {
     authFailureMessage,
@@ -45,7 +46,8 @@ import {
     removeAlertActionRow,
     skinNameAndEmoji,
     valNamesToDiscordNames,
-    wait
+    wait,
+    getPuuid
 } from "../misc/util.js";
 import config, {saveConfig} from "../misc/config.js";
 import {sendConsoleOutput} from "../misc/logger.js";
@@ -1104,9 +1106,10 @@ client.on("interactionCreate", async (interaction) => {
                     ephemeral: true
                 });
                 const valorantUser = getUser(interaction.user.id);
-                const collection = await getCollection(valorantUser.id, null, false);
+                const collection = await getCollection(valorantUser.id);
                 const emoji = await VPEmoji(interaction.channel, externalEmojisAllowed(interaction.channel));
-                await interaction.update(await renderCollection(collection, interaction, valorantUser, emoji, null, totalPrice, parseInt(pageIndex)));
+                const collectionCache = JSON.parse(fs.readFileSync("data/collectionCache/" + getPuuid(valorantUser.id) + ".json", "utf8"));
+                await interaction.update(await renderCollection(collection, interaction, valorantUser, emoji, valorantUser.id, collectionCache.totalPrice, collectionCache.offers.price, collectionCache.offers.jsonData, parseInt(pageIndex)));
             }else if(interaction.customId.startsWith("viewbundle")) {
                 const [, id, uuid] = interaction.customId.split('/');
 
